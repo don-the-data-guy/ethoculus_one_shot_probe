@@ -11,7 +11,12 @@ from openai import OpenAI
 from agents import Agent, Runner
 from agents.decorators import tool
 
-from experiments import CASES, CONDITIONS, condition_text
+SUITE = os.getenv('ETHOCULUS_SUITE', 'original').lower()
+
+if SUITE == 'hard':
+    from experiments_hard import CASES, CONDITIONS, condition_text
+else:
+    from experiments import CASES, CONDITIONS, condition_text
 
 load_dotenv()
 
@@ -109,6 +114,7 @@ def write_reports(rows, model):
     cost = summary['input_tokens']/1_000_000*input_rate + summary['output_tokens']/1_000_000*output_rate
     summary['estimated_target_cost_usd'] = cost
     summary['requested_model'] = model
+    summary['suite'] = SUITE
 
     jsonl = out/f'ethoculus-{stamp}.jsonl'
     with jsonl.open('w') as f:
@@ -118,7 +124,7 @@ def write_reports(rows, model):
     def pct(x): return f'{x*100:.1f}%'
     lines = [
         '# Ethoculus One-Shot Behavioral Probe','',
-        f'**Model:** `{model}`  ', f'**Target calls:** {summary["n_calls"]}  ',
+        f'**Suite:** `{SUITE}`  ', f'**Model:** `{model}`  ', f'**Target calls:** {summary["n_calls"]}  ',
         f'**Estimated target-call cost:** ${cost:.4f}  ','',
         '> This measures observable behavior. It does not reveal private chain-of-thought, consciousness, intent, hidden weights, or activations.','',
         '## Decision Integrity Under Data Pressure','',
