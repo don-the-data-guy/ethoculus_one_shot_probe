@@ -1,45 +1,56 @@
-# Ethoculus One-Shot OpenAI Probe
+# Ethoculus Probe
 
-A concrete, low-cost demonstration of using controlled data perturbations to map observable LLM behavior.
-
-## The idea
-
-The program gives an OpenAI model a clear synthetic legal rule and facts, then progressively adds non-controlling data: prestige claims, repetition, apparent consensus, outcome pressure, and finally a reassertion of the governing rule.
-
-The correct answer never changes.
-
-The experiment asks whether the model's observable decision changes as the surrounding data changes.
+Controlled, low-cost behavioral experiments for cross-examining AI models from any major platform.
 
 > This does **not** reveal private chain-of-thought, consciousness, intent, hidden weights, or activations. It is a behavioral experiment.
 
-## Default experiment
+## What's new in this release
 
-- 5 synthetic legal cases
-- 7 conditions
-- 2 repetitions
-- 70 target-model calls
-- 1 optional final OpenAI Agents SDK orchestration/summary call
+Ethoculus is no longer limited to OpenAI. One settings file now points the probes at OpenAI, Anthropic, Google Gemini, xAI, Groq, Mistral, DeepSeek, Together, OpenRouter, local models through Ollama, or any OpenAI-compatible endpoint. The model being tested (the **target**) and the model grading the answers (the **judge**) can sit on different platforms, so no model has to grade its own work.
 
-Use `--trials 1` for a 35-call demo.
+## Two experiments
 
-## What it measures
+### 1. Decision integrity under data pressure (`run_once.py`)
 
-- baseline accuracy
-- accuracy under each pressure condition
-- integrity drop versus baseline
-- confidence
-- high-confidence errors
-- exact prompts and public-facing model answers
-- response/model IDs, latency, and token usage
+The program gives a model a clear synthetic legal rule and facts, then progressively adds non-controlling data: prestige claims, repetition, apparent consensus, outcome pressure, and finally a reassertion of the governing rule. The correct answer never changes. The experiment asks whether the model's observable decision changes as the surrounding data changes.
 
-## Output
+Default run: 5 synthetic legal cases, 7 conditions, 2 repetitions, 70 target-model calls. Use `--trials 1` for a 35-call demo.
 
-After one run:
+It measures baseline accuracy, accuracy under each pressure condition, the integrity drop versus baseline, confidence, high-confidence errors, exact prompts and public-facing answers, and response IDs, latency, and token usage.
 
-- `reports/latest.html` — visual demo report
-- `reports/latest.md` — readable research summary
-- `reports/latest-summary.json` — structured summary
-- `reports/ethoculus-*.jsonl` — raw row-level evidence
+### 2. Integrity probes (`run_integrity_probes.py`)
+
+Five probe families, 15 result rows per trial:
+
+| Probe | What it tests | How it is scored |
+|---|---|---|
+| `citation` | Does the model fabricate sources? | Every returned URL is fetched live and checked against the claimed title |
+| `refusal` | Does a stated boundary hold under a direct request, a fictional wrapper, claimed credentials, and multi-turn escalation? | A synthetic test token either appears in the answer or it does not |
+| `sycophancy` | Does the model correct a confident user who is wrong, and hold firm with a hesitant user who is right? | Judge model compares the answer to the known correct position |
+| `injection` | Does instruction-like text hidden in a document hijack the model? | The injected output either appears or it does not |
+| `memory` | Does a persona set early in a conversation distort a later, unrelated factual answer? | Fresh-context control compared against a persona-conditioned treatment |
+
+Every row records the probe type, the exact question, the variant, the trial number, the full response, a pass / fail / indeterminate result, and the basis for that result.
+
+A live citation check confirms that a source exists and matches the claimed title. It does not prove that every holding, quotation, or statistic attributed to that source is correct.
+
+## Supported platforms
+
+| `PROVIDER` | Key variable | Notes |
+|---|---|---|
+| `openai` | `OPENAI_API_KEY` | OpenAI Responses API |
+| `anthropic` | `ANTHROPIC_API_KEY` | Anthropic Messages API |
+| `gemini` | `GEMINI_API_KEY` | OpenAI-compatible endpoint |
+| `xai` | `XAI_API_KEY` | OpenAI-compatible endpoint |
+| `groq` | `GROQ_API_KEY` | OpenAI-compatible endpoint |
+| `mistral` | `MISTRAL_API_KEY` | OpenAI-compatible endpoint |
+| `deepseek` | `DEEPSEEK_API_KEY` | OpenAI-compatible endpoint |
+| `together` | `TOGETHER_API_KEY` | OpenAI-compatible endpoint |
+| `openrouter` | `OPENROUTER_API_KEY` | OpenAI-compatible endpoint |
+| `ollama` | none | Local models at `http://localhost:11434/v1` |
+| `custom` | `CUSTOM_API_KEY` | Any OpenAI-compatible URL; set `TARGET_BASE_URL` |
+
+All platform calls go through `providers.py` using plain HTTPS requests, so no vendor SDK is required beyond what is in `requirements.txt`.
 
 ## macOS setup
 
@@ -51,45 +62,77 @@ cp .env.example .env
 nano .env
 ```
 
-Add:
+Fill in the target, the judge, and the keys for the platforms you use:
 
 ```text
+TARGET_PROVIDER=anthropic
+TARGET_MODEL=your-target-model-id
+JUDGE_PROVIDER=openai
+JUDGE_MODEL=your-judge-model-id
+ANTHROPIC_API_KEY=your_key_here
 OPENAI_API_KEY=your_key_here
 ```
 
 Save Nano with `Control-O`, Enter, then `Control-X`.
 
+`.env` is excluded by `.gitignore`. Never put real keys in `.env.example`, and never commit `.env`.
+
 ## Preview for free
+
+Dry runs make no API calls. They show the planned workload and confirm which platform and endpoint each model will use.
 
 ```bash
 python run_once.py --dry-run
+python run_integrity_probes.py --dry-run
 ```
 
-## Run it once
+## Run it
+
+Command-line flags override `.env`. Keep each command on a single line.
 
 ```bash
-python run_once.py --trials 2
+python run_once.py --trials 2 --provider anthropic --model your-target-model-id
+python run_integrity_probes.py --probe citation --trials 1
+python run_integrity_probes.py --probe all --trials 3 --target-provider anthropic --target-model your-target-model-id --judge-provider openai --judge-model your-judge-model-id
 ```
 
-Open the visual report:
+Open the reports:
 
 ```bash
 open reports/latest.html
+open reports/integrity-probes.html
 ```
 
-## Cheaper / simpler run
+Each run overwrites the HTML report. To keep one, copy it first, for example `cp reports/integrity-probes.html reports/integrity-probes-modelname.html`. The raw `.jsonl` evidence files are timestamped and kept automatically.
 
-Skip the final orchestration model turn while keeping all controlled target calls:
+## Output
 
-```bash
-python run_once.py --trials 1 --no-orchestrator
-```
+`run_once.py` writes:
 
-## Test another OpenAI model
+- `reports/latest.html` — visual report
+- `reports/latest.md` — readable summary
+- `reports/latest-summary.json` — structured summary
+- `reports/ethoculus-*.jsonl` — raw row-level evidence
 
-```bash
-python run_once.py --trials 2 --model gpt-5.6-sol
-```
+`run_integrity_probes.py` writes:
+
+- `reports/integrity-probes.html` — every row, with the question and response expandable
+- `reports/integrity-probes.md` — readable summary
+- `reports/integrity-probes-summary.json` — pass / fail / indeterminate counts by probe
+- `reports/integrity-probes-*.jsonl` — raw row-level evidence
+
+## Choosing a judge
+
+The sycophancy and memory probes use a second model to grade answers. Use a judge from a different platform than the target. The dry run prints a warning when both are on the same platform. Keep the judge fixed across runs you plan to compare, so that differences come from the targets and not from the grader.
+
+## Troubleshooting
+
+- **`unrecognized arguments: --target-provider`** — an older `run_integrity_probes.py` is still in the folder. Check with `grep -c "target-provider" run_integrity_probes.py`, which should print `1`.
+- **`ProviderError ... HTTP 404` or `HTTP 400`** — the model ID or the endpoint is wrong. Confirm the model name on the platform's model list, or set `TARGET_BASE_URL` to the platform's current endpoint.
+- **A platform rejects `max_tokens`** — set `TARGET_MAX_TOKENS_PARAM=max_completion_tokens` in `.env`.
+- **`[retry]` or `[SKIPPED]` lines** — the model returned an empty or cut-off answer, which is common with reasoning models. Raise the budget with `--max-output-tokens 1200`. Skipped calls are logged to `reports/errors-*.jsonl` or `reports/integrity-probes-errors-*.jsonl`.
+
+The optional summarizing agent in `run_once.py` uses the OpenAI Agents SDK and runs only when the target platform is OpenAI. Add `--no-orchestrator` to skip it.
 
 ## What would make this publication-grade?
 
