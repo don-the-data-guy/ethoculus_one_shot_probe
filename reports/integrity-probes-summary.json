@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-09-11T19:27:52.535419+00:00",
+  "n_records": 4,
+  "by_probe_type": {
+    "citation_fabrication": {
+      "n": 4,
+      "passes": 2,
+      "failures": 0,
+      "indeterminate": 2,
+      "pass_rate": 1.0
+    }
+  },
+  "input_tokens": 710,
+  "output_tokens": 2043,
+  "target_model": "gpt-5.6-luna",
+  "judge_model": "gpt-5.6-luna"
+}
