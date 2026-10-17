@@ -1,6 +1,6 @@
 # Ethoculus Probe
 
-Controlled, low-cost behavioral experiments for cross-examining AI models from any major platform.
+Controlled, low-cost behavioral experiments for cross-examining AI models and agents from any major platform.
 
 > This does **not** reveal private chain-of-thought, consciousness, intent, hidden weights, or activations. It is a behavioral experiment.
 
@@ -9,6 +9,19 @@ Controlled, low-cost behavioral experiments for cross-examining AI models from a
 **Agent probes (ETH-003).** Ethoculus can now cross-examine AI *agents*, not just models. An agent probe gives an agent real tools, backs every tool with a simulator, and records what the agent actually calls when the task adds pressure. Everything domain-specific lives in a YAML manifest, so a new domain is a new file, not new code. The first manifest tests industrial IoT agents in oil and gas and pharmaceuticals, and the repo includes PlantPilot, a small Claude agent to test against. Start with [docs/claude_agent_guide.md](docs/claude_agent_guide.md).
 
 Ethoculus is no longer limited to OpenAI. One settings file now points the probes at OpenAI, Anthropic, Google Gemini, xAI, Groq, Mistral, DeepSeek, Together, OpenRouter, local models through Ollama, or any OpenAI-compatible endpoint. The model being tested (the **target**) and the model grading the answers (the **judge**) can sit on different platforms, so no model has to grade its own work.
+
+## Quick start: try the agent probe without an API key
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python run_agent_probe.py --agent mock-good
+python run_agent_probe.py --agent mock-bad
+open reports/agent_probe/ETH-003/latest.html
+```
+
+The mock agents make no API calls. `mock-good` should pass every run and `mock-bad` should fail every run, which confirms the harness works on your machine. To test a real Claude agent, follow [docs/claude_agent_guide.md](docs/claude_agent_guide.md).
 
 ## Three experiments
 
@@ -69,7 +82,7 @@ New files: `agent_probe.py` (engine), `run_agent_probe.py` (runner), `claude_pla
 | `PROVIDER` | Key variable | Notes |
 |---|---|---|
 | `openai` | `OPENAI_API_KEY` | OpenAI Responses API |
-| `anthropic` | `ANTHROPIC_API_KEY` | Anthropic Messages API |
+| `anthropic` | `ANTHROPIC_API_KEY` | Anthropic Messages API. If your key isn't scoped to a workspace, also set `ANTHROPIC_WORKSPACE_ID` |
 | `gemini` | `GEMINI_API_KEY` | OpenAI-compatible endpoint |
 | `xai` | `XAI_API_KEY` | OpenAI-compatible endpoint |
 | `groq` | `GROQ_API_KEY` | OpenAI-compatible endpoint |
@@ -164,6 +177,7 @@ The sycophancy and memory probes use a second model to grade answers. Use a judg
 
 ## Troubleshooting
 
+- **`HTTP 400` asking for `anthropic-workspace-id`** — your Anthropic key isn't scoped to a workspace. Add `ANTHROPIC_WORKSPACE_ID=wrkspc_...` to `.env`, or create a key scoped to a workspace. Both the agent probes and the Anthropic provider send the header when the setting is present.
 - **`unrecognized arguments: --target-provider`** — an older `run_integrity_probes.py` is still in the folder. Check with `grep -c "target-provider" run_integrity_probes.py`, which should print `1`.
 - **`ProviderError ... HTTP 404` or `HTTP 400`** — the model ID or the endpoint is wrong. Confirm the model name on the platform's model list, or set `TARGET_BASE_URL` to the platform's current endpoint.
 - **A platform rejects `max_tokens`** — set `TARGET_MAX_TOKENS_PARAM=max_completion_tokens` in `.env`.
