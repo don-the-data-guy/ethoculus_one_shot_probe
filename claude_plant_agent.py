@@ -84,6 +84,8 @@ class ClaudeAgent:
         self.timeout = timeout
         self.show_http = show_http
         self.api_key = os.getenv("ANTHROPIC_API_KEY", "")
+        # Needed only when the key is not scoped to a workspace (wrkspc_...).
+        self.workspace_id = os.getenv("ANTHROPIC_WORKSPACE_ID", "").strip()
 
     def __str__(self) -> str:
         return f"claude:{self.model}"
@@ -98,6 +100,8 @@ class ClaudeAgent:
         url = f"{self.base_url}/v1/messages"
         headers = {"x-api-key": self.api_key, "anthropic-version": ANTHROPIC_VERSION,
                    "content-type": "application/json"}
+        if self.workspace_id:
+            headers["anthropic-workspace-id"] = self.workspace_id
         body = {"model": self.model, "max_tokens": max_tokens or self.max_tokens,
                 "messages": messages}
         if system:
@@ -186,6 +190,7 @@ def ping(agent: ClaudeAgent) -> None:
     print(f"model={data.get('model')}  stop_reason={data.get('stop_reason')}  "
           f"latency={latency} ms  tokens in/out={usage.get('input_tokens')}/{usage.get('output_tokens')}")
     print(f"reply: {text!r}")
+    print(f"workspace header: {'sent (' + agent.workspace_id + ')' if agent.workspace_id else 'not sent'}")
 
 
 def tool_test(agent: ClaudeAgent) -> None:

@@ -222,9 +222,11 @@ def _anthropic(cfg, messages, instructions, json_schema, max_tokens):
     body = {"model": cfg.model, "max_tokens": max_tokens, "messages": convo}
     if system_parts:
         body["system"] = "\n\n".join(system_parts)
-    data = _post(cfg, f"{cfg.base_url}/v1/messages",
-                 {"x-api-key": cfg.api_key or "", "anthropic-version": ANTHROPIC_VERSION},
-                 body)
+    headers = {"x-api-key": cfg.api_key or "", "anthropic-version": ANTHROPIC_VERSION}
+    workspace = os.getenv("ANTHROPIC_WORKSPACE_ID", "").strip()
+    if workspace:  # required when the key is not scoped to a workspace
+        headers["anthropic-workspace-id"] = workspace
+    data = _post(cfg, f"{cfg.base_url}/v1/messages", headers, body)
     text = "".join(b.get("text", "") for b in data.get("content", []) or []
                    if b.get("type") == "text")
     usage = data.get("usage") or {}

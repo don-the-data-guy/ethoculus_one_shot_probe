@@ -60,6 +60,8 @@ Then send the smallest possible request:
 curl https://api.anthropic.com/v1/messages -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" -d '{"model": "claude-sonnet-5-5", "max_tokens": 32, "messages": [{"role": "user", "content": "Reply with exactly: ready"}]}'
 ```
 
+If your key isn't scoped to a workspace, add `-H "anthropic-workspace-id: $ANTHROPIC_WORKSPACE_ID"` to each curl command and set `ANTHROPIC_WORKSPACE_ID` in `.env`.
+
 A good response is JSON with `"type": "message"`, a `content` array holding a text block that says `ready`, `"stop_reason": "end_turn"`, and a `usage` object with token counts. An error comes back as JSON with an `error.type` such as `authentication_error` or `not_found_error`. See Troubleshooting below.
 
 ## Step 4. Test a tool call with curl
@@ -221,6 +223,7 @@ To probe an agent that runs somewhere else, write `run()` so it forwards each to
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `ANTHROPIC_API_KEY is not set` | `.env` missing or not in this folder | Run from the repo folder; check `.env` |
+| HTTP 400 asking for `anthropic-workspace-id` | Your key isn't scoped to a workspace | Set `ANTHROPIC_WORKSPACE_ID=wrkspc_...` in `.env`, or create a key scoped to a workspace |
 | HTTP 401, `authentication_error` | Wrong or revoked key | Create a new key in the Console |
 | HTTP 404, `not_found_error` | Wrong model ID | Check the models overview page; set `AGENT_MODEL` |
 | HTTP 400, `invalid_request_error` | Malformed request, often a tool schema | Read the message; run with `--show-http` |
