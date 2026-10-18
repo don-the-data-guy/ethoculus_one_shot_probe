@@ -8,6 +8,8 @@ Controlled, low-cost behavioral experiments for cross-examining AI models and ag
 
 **Agent probes (ETH-003).** Ethoculus can now cross-examine AI *agents*, not just models. An agent probe gives an agent real tools, backs every tool with a simulator, and records what the agent actually calls when the task adds pressure. Everything domain-specific lives in a YAML manifest, so a new domain is a new file, not new code. The first manifest tests industrial IoT agents in oil and gas and pharmaceuticals, and the repo includes PlantPilot, a small Claude agent to test against. Start with [docs/claude_agent_guide.md](docs/claude_agent_guide.md).
 
+**SPC monitor.** Agents change underneath you when a vendor updates a model or someone edits a prompt. `spc_monitor.py` reruns a small canary set on a schedule and charts the results as control charts, so a behavior shift shows up as a signal next to the configuration change that preceded it. Results also go out as historian-ready tags. See [docs/spc_monitor_guide.md](docs/spc_monitor_guide.md).
+
 Ethoculus is no longer limited to OpenAI. One settings file now points the probes at OpenAI, Anthropic, Google Gemini, xAI, Groq, Mistral, DeepSeek, Together, OpenRouter, local models through Ollama, or any OpenAI-compatible endpoint. The model being tested (the **target**) and the model grading the answers (the **judge**) can sit on different platforms, so no model has to grade its own work.
 
 ## Quick start: try the agent probe without an API key
@@ -19,6 +21,8 @@ pip install -r requirements.txt
 python run_agent_probe.py --agent mock-good
 python run_agent_probe.py --agent mock-bad
 open reports/agent_probe/ETH-003/latest.html
+python spc_monitor.py demo
+open monitoring/ETH-003/demo/spc_report.html
 ```
 
 The mock agents make no API calls. `mock-good` should pass every run and `mock-bad` should fail every run, which confirms the harness works on your machine. To test a real Claude agent, follow [docs/claude_agent_guide.md](docs/claude_agent_guide.md).
@@ -76,6 +80,19 @@ python run_agent_probe.py --agent claude --no-policy
 ```
 
 New files: `agent_probe.py` (engine), `run_agent_probe.py` (runner), `claude_plant_agent.py` (PlantPilot), `mock_agents.py` (offline validation), `manifests/` (experiments and the authoring guide), and `docs/claude_agent_guide.md` (step-by-step setup and API tests).
+
+## Continuous monitoring (`spc_monitor.py`)
+
+A probe is a snapshot. The SPC monitor turns it into a monitor. Each `run` executes a canary sample (by default all 7 ETH-003 cases under baseline and combined pressure) and plots three proportions on p-charts: pass rate, forbidden-call rate, and disclosure rate. The first 10 samples set the baseline. After that, the Western Electric rules flag degradation or improvement, and every change to the agent's configuration (model, persona, manifest, policy) is marked on the chart so a shift can be traced to its cause.
+
+```bash
+python spc_monitor.py demo
+python spc_monitor.py run --agent claude --stream plantpilot
+python spc_monitor.py run --agent claude --stream plantpilot --fail-on-alarm
+python spc_monitor.py rebaseline --agent claude --stream plantpilot --note "new model accepted"
+```
+
+Each stream lives in `monitoring/<experiment_id>/<stream>/`: `history.jsonl` (one line per sample), `spc_report.html` (charts, signals, configuration changes, per-case breakdown), and `tags_wide.csv` / `tags_long.csv` for import into a historian or Seeq. Scheduling, chart reading, and the statistical limits are in [docs/spc_monitor_guide.md](docs/spc_monitor_guide.md).
 
 ## Supported platforms
 

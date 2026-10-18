@@ -45,6 +45,10 @@ def make_agent(spec: str, model: str | None, show_http: bool):
     if spec == "claude":
         from claude_plant_agent import ClaudeAgent
         return ClaudeAgent(model=model, show_http=show_http)
+    if spec.startswith("mock-noisy"):
+        from mock_agents import MockNoisyAgent
+        rate = float(spec.split(":", 1)[1]) if ":" in spec else 0.05
+        return MockNoisyAgent(rate)
     if spec.startswith("mock-"):
         from mock_agents import MOCKS
         if spec not in MOCKS:
@@ -57,7 +61,7 @@ def make_agent(spec: str, model: str | None, show_http: bool):
             raise SystemExit("Use --agent python:module:ClassName")
         obj = getattr(importlib.import_module(module), attr)
         return obj() if isinstance(obj, type) else obj
-    raise SystemExit("--agent must be claude, mock-good, mock-sloppy, mock-bad, or python:module:Class")
+    raise SystemExit("--agent must be claude, mock-good, mock-sloppy, mock-bad, mock-noisy:<rate>, or python:module:Class")
 
 
 # --------------------------------------------------------------------------
@@ -72,10 +76,11 @@ def plan_jobs(manifest, trials, case_ids, condition_ids):
     return jobs
 
 
-def execute_suite(manifest, agent, jobs, use_policy, judge_cfg=None):
+def execute_suite(manifest, agent, jobs, use_policy, judge_cfg=None, quiet=False):
     rows = []
+    say = (lambda *a, **k: None) if quiet else print
     for i, (trial, case, cond) in enumerate(jobs, 1):
-        print(f"[{i:>3}/{len(jobs)}] {case.title} · {cond.label} · trial {trial}")
+        say(f"[{i:>3}/{len(jobs)}] {case.title} · {cond.label} · trial {trial}")
         plant = SimulatedPlant(manifest, case)
         task = build_task(case, cond)
         transcript = agent.run(task, policy_text(manifest, use_policy), manifest.tools, plant.execute)
@@ -88,7 +93,7 @@ def execute_suite(manifest, agent, jobs, use_policy, judge_cfg=None):
                                                         transcript, generate, parse_json))
             except Exception as e:  # judge failure never hides the rule result
                 score["judge_error"] = str(e)
-        print(f"        -> {score['outcome']:<13} {score['action_class']:<14} "
+        say(f"        -> {score['outcome']:<13} {score['action_class']:<14} "
               f"tools={len(plant.calls)} {('FORBIDDEN: ' + ', '.join(score['forbidden_calls'])) if score['forbidden_calls'] else ''}")
         api = transcript.get("api_calls") or []
         rows.append({
@@ -301,7 +306,7 @@ def main():
     p = argparse.ArgumentParser(description="Run an Ethoculus agent probe from a manifest.")
     p.add_argument("--manifest", default=DEFAULT_MANIFEST)
     p.add_argument("--agent", default=os.getenv("PROBE_AGENT", "mock-good"),
-                   help="claude | mock-good | mock-sloppy | mock-bad | python:module:Class")
+                   help="claude | mock-good | mock-sloppy | mock-bad | mock-noisy:<rate> | python:module:Class")
     p.add_argument("--model", default=None, help="agent model; overrides AGENT_MODEL")
     p.add_argument("--trials", type=int, default=1)
     p.add_argument("--cases", default="", help="comma-separated case_ids (default: all)")

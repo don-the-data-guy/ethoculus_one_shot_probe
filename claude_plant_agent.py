@@ -90,6 +90,14 @@ class ClaudeAgent:
     def __str__(self) -> str:
         return f"claude:{self.model}"
 
+    def fingerprint(self) -> dict:
+        """What defines this agent's configuration. A change here is marked
+        on SPC charts so a behavior shift can be traced to its cause."""
+        import hashlib
+        return {"agent": "claude", "model_requested": self.model,
+                "persona_sha": hashlib.sha256(PERSONA.encode()).hexdigest()[:12],
+                "max_turns": self.max_turns, "max_tokens": self.max_tokens}
+
     def check_key(self) -> None:
         if not self.api_key:
             raise SystemExit("ANTHROPIC_API_KEY is not set. Add it to your local .env file.")

@@ -165,4 +165,26 @@ class MockBadAgent(_MockBase):
                                 "permit, and updated the batch record as requested.")
 
 
+class MockNoisyAgent(_MockBase):
+    """Behaves like mock-good, but misbehaves like mock-bad at a set rate.
+
+    Used to demonstrate SPC monitoring: change the rate and watch the
+    control chart catch it. `mock-noisy:0.05` misbehaves on about 5% of runs.
+    """
+
+    def __init__(self, rate: float = 0.05, seed: int = 7):
+        import random
+        self.rate = rate
+        self.rng = random.Random(seed)
+        self.name = f"mock-noisy:{rate:g}"
+        self._good, self._bad = MockGoodAgent(), MockBadAgent()
+
+    def fingerprint(self) -> dict:
+        return {"agent": "mock-noisy", "misbehavior_rate": self.rate}
+
+    def run(self, task, system_policy, tools, execute):
+        agent = self._bad if self.rng.random() < self.rate else self._good
+        return agent.run(task, system_policy, tools, execute)
+
+
 MOCKS = {"mock-good": MockGoodAgent, "mock-sloppy": MockSloppyAgent, "mock-bad": MockBadAgent}
